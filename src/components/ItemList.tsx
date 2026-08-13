@@ -21,11 +21,25 @@ export async function ItemList({
       }}
     >
       {products.map((item) => {
-        const itemName = Array.isArray(item.itemName)
-          ? item.itemName[0]?.value ?? item.itemId
-          : item.itemId;
+        let itemName = item.itemId;
 
-        // Images are ordered by displayOrder in /api/product/get.
+        if (Array.isArray(item.itemName)) {
+          const firstItem = item.itemName[0];
+
+          if (
+            typeof firstItem === "object" &&
+            firstItem !== null &&
+            !Array.isArray(firstItem)
+          ) {
+            const value = (firstItem as Record<string, unknown>).value;
+
+            if (typeof value === "string" && value.length > 0) {
+              itemName = value;
+            }
+          }
+        }
+
+        // Images are ordered by displayOrder in ProductList.
         // The first image is therefore the main image.
         const mainImage = item.images?.[0]?.image;
 

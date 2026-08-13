@@ -1,35 +1,79 @@
 // src/components/ProductList.tsx
 
+import { getPrisma } from "../../lib/prisma";
+
 export async function ProductList({
   productType,
 }: {
   productType?: string;
 }) {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const prisma = await getPrisma();
 
-  const url = new URL(`${baseUrl}/api/product/get`);
+  const products = await prisma.product.findMany({
+    where: productType
+      ? {
+          productType,
+        }
+      : undefined,
 
-  if (productType) {
-    url.searchParams.set("productType", productType);
-  }
+    take: 100,
 
-  // Only request English products
-  url.searchParams.set("language", "en");
+    orderBy: {
+      id: "asc",
+    },
 
-  const res = await fetch(url.toString());
+    include: {
+      images: {
+        include: {
+          image: true,
+        },
+        orderBy: {
+          displayOrder: "asc",
+        },
+      },
+    },
+  });
 
-  if (!res.ok) {
-    const body = await res.text();
+  const englishProducts = products.filter((product) => {
+    const rawData = product.rawData;
 
-    throw new Error(
-      `Failed to fetch products: ${res.status} ${res.statusText} - ${body}`
-    );
-  }
+    if (
+      typeof rawData !== "object" ||
+      rawData === null ||
+      Array.isArray(rawData)
+    ) {
+      return false;
+    }
 
-  const products = await res.json();
+    const itemNames = (rawData as Record<string, unknown>).item_name;
 
-  console.log("Fetched English products:", products);
+    if (!Array.isArray(itemNames)) {
+      return false;
+    }
 
-  return products;
+    return itemNames.some((item: unknown) => {
+      if (
+        typeof item !== "object" ||
+        item === null ||
+        Array.isArray(item)
+      ) {
+        return false;
+      }
+
+      const languageTag = (item as Record<string, unknown>).language_tag;
+
+      return (
+        typeof languageTag === "string" &&
+        languageTag.toLowerCase().startsWith("en_")
+      );
+    });
+  });
+
+  const finalProducts = englishProducts.slice(0, 10);
+
+  console.log(
+    `Fetched ${products.length} products, returning ${finalProducts.length} English products`
+  );
+
+  return finalProducts;
 }
