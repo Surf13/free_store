@@ -20,28 +20,20 @@ export async function ItemList({
         margin: "0 1rem",
       }}
     >
-      {products.map((item) => {
-        let itemName = item.itemId;
+      {products.map((item: any) => {
+        const itemName = Array.isArray(item.itemName)
+          ? String(item.itemName[0]?.value ?? item.itemId)
+          : item.itemId;
 
-        if (Array.isArray(item.itemName)) {
-          const firstItem = item.itemName[0];
-
-          if (
-            typeof firstItem === "object" &&
-            firstItem !== null &&
-            !Array.isArray(firstItem)
-          ) {
-            const value = (firstItem as Record<string, unknown>).value;
-
-            if (typeof value === "string" && value.length > 0) {
-              itemName = value;
-            }
-          }
-        }
-
-        // Images are ordered by displayOrder in ProductList.
-        // The first image is therefore the main image.
         const mainImage = item.images?.[0]?.image;
+
+        const imageUrl = mainImage?.id
+          ? `/api/images/${mainImage.id}`
+          : null;
+
+        console.log("Product:", item.id);
+        console.log("Main image:", mainImage);
+        console.log("Image URL:", imageUrl);
 
         return (
           <div
@@ -62,10 +54,12 @@ export async function ItemList({
                 color: "inherit",
               }}
             >
-              {mainImage?.storageKey ? (
+              {imageUrl ? (
                 <img
-                  src={`/api/images/${mainImage.id}`}
+                  src={imageUrl}
                   alt={itemName}
+                  width={170}
+                  height={150}
                   style={{
                     width: "85%",
                     height: "150px",
