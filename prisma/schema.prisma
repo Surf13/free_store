@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id              String   @id @default(cuid())
+
+  itemId          String
+  domainName      String
+  marketplace     String?
+  country         String?
+  productType     String?
+
+  brand           Json?
+  itemName        Json?
+  color           Json?
+  material        Json?
+  style           Json?
+  modelName       Json?
+  modelNumber     Json?
+  modelYear       Int?
+
+  bulletPoints    Json?
+  keywords        Json?
+  dimensions      Json?
+  weight          Json?
+  nodes           Json?
+
+  colorCode       Json?
+  fabricType      Json?
+  finishType      Json?
+  itemShape       Json?
+  pattern         Json?
+  productDescription Json?
+  spinId          String?
+  model3dId       String?
+
+  rawData         Json
+
+  images          ProductImage[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([itemId, domainName])
+  @@index([productType])
+  @@index([marketplace])
+  @@index([country])
+}
+
+model Image {
+  id             String   @id
+
+  width          Int?
+  height         Int?
+  path           String?
+
+  // Location in your S3 bucket
+  storageKey     String?
+
+  rawData        Json?
+
+  products       ProductImage[]
+
+  createdAt      DateTime @default(now())
+}
+
+model ProductImage {
+  productId    String
+  imageId      String
+
+  type         String
+  displayOrder Int?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  image Image @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@id([productId, imageId])
+  @@index([imageId])
+}

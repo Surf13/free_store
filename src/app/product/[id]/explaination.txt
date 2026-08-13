@@ -1,0 +1,2 @@
+Renders Individual prudct based on 
+ID using default page layout for all prudcts

@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "rds-db:connect",
+      "Resource": "arn:aws:rds-db:us-east-1:466200807417:dbuser:cluster-5CNDWMFJIJ2SXRA5TLKA5LLEDU/webstore"
+    }
+  ]
+}
