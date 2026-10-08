@@ -2,17 +2,38 @@
 
 import { getPrisma } from "../../lib/prisma";
 
+type ProductListProps = {
+  productType?: string;
+  productTypes?: string[];
+};
+
 export async function ProductList({
   productType,
-}: {
-  productType?: string;
-}) {
+  productTypes,
+}: ProductListProps) {
   const prisma = await getPrisma();
 
+  /*
+   * Allow the component to receive either:
+   *
+   * productType="SHOES"
+   *
+   * or:
+   *
+   * productTypes=["SHOES", "SANDAL", "BOOT"]
+   *
+   * This lets category pages fetch multiple database
+   * product types with one Prisma query.
+   */
+
+  const types = productTypes ?? (productType ? [productType] : []);
+
   const products = await prisma.product.findMany({
-    where: productType
+    where: types.length
       ? {
-          productType,
+          productType: {
+            in: types,
+          },
         }
       : undefined,
 
@@ -34,7 +55,22 @@ export async function ProductList({
     },
   });
 
+  /*
+   * Only display products that:
+   *
+   * 1. Have English product information
+   * 2. Have at least one usable image
+   */
+
   const englishProducts = products.filter((product) => {
+    const hasImage =
+      Array.isArray(product.images) &&
+      product.images.some((image) => image.image?.id);
+
+    if (!hasImage) {
+      return false;
+    }
+
     const rawData = product.rawData;
 
     if (
@@ -60,7 +96,8 @@ export async function ProductList({
         return false;
       }
 
-      const languageTag = (item as Record<string, unknown>).language_tag;
+      const languageTag = (item as Record<string, unknown>)
+        .language_tag;
 
       return (
         typeof languageTag === "string" &&
@@ -68,6 +105,11 @@ export async function ProductList({
       );
     });
   });
+
+  /*
+   Keep the storefront from displaying too many products
+   at once.
+   */
 
   const finalProducts = englishProducts.slice(0, 10);
 

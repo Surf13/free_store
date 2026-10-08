@@ -10,13 +10,14 @@ const s3 = new S3Client({
 const BUCKET =
   process.env.AWS_S3_BUCKET || "product-images-freestore";
 
+//Used to Retrive specific Images from S3 bucket asscoiated with Database product
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
 
-  console.log("🖼️ Image request:", id);
+  console.log("Image request:", id);
 
   if (!id) {
     return new NextResponse("Missing image ID", {

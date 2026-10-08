@@ -4,6 +4,9 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+//used to send an email from webstore to "Corporate" Email.
+
+//Currently inactive due to disabling domain that resend uses.
 export async function sendEmail(formData) {
   const email = formData.get("email");
   const message = formData.get("message");

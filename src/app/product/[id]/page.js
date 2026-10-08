@@ -1,99 +1,14 @@
 import { notFound } from "next/navigation";
 import { getPrisma, disconnectPrisma } from "@/../lib/prisma";
+import { getCartItemQuantity } from "@/../lib/cart";
+
 import ProductImageGallery from "@/components/ImageGallery";
+import CartButton from "@/components/cartButton";
 
 import {
   displayValue,
   cleanProductTitle,
 } from "@/lib/product-display";
-
-/**
- * Translate multiple strings to English using Google Cloud Translation.
- *
- * This runs on the server only.
- *
- * Add this to your .env:
- *
- * GOOGLE_TRANSLATE_API_KEY=your_key_here
- */
-async function translateToEnglish(values) {
-  const cleanValues = values.map((value) => {
-    if (!value) return "";
-    return String(value).trim();
-  });
-
-  // Nothing to translate.
-  if (!cleanValues.some(Boolean)) {
-    return cleanValues;
-  }
-
-  const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-
-  // If translation isn't configured, return the original text.
-  // This keeps the product page working.
-  if (!apiKey) {
-    console.warn(
-      "GOOGLE_TRANSLATE_API_KEY is not configured. Using original product text."
-    );
-
-    return cleanValues;
-  }
-
-  try {
-    const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(
-        apiKey
-      )}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          q: cleanValues,
-          target: "en",
-          format: "text",
-        }),
-
-        // Don't cache translated text forever.
-        // We'll improve this later by storing translations in the database.
-        cache: "no-store",
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-
-      console.error(
-        "Google Translation API error:",
-        response.status,
-        errorText
-      );
-
-      return cleanValues;
-    }
-
-    const data = await response.json();
-
-    const translations =
-      data?.data?.translations || [];
-
-    return cleanValues.map((original, index) => {
-      return (
-        translations[index]?.translatedText ||
-        original
-      );
-    });
-  } catch (error) {
-    console.error(
-      "Translation request failed:",
-      error
-    );
-
-    // Never let translation failure break the product page.
-    return cleanValues;
-  }
-}
 
 export default async function ProductPage({ params }) {
   const { id } = await params;
@@ -123,50 +38,28 @@ export default async function ProductPage({ params }) {
       notFound();
     }
 
+    const initialQuantity = await getCartItemQuantity(product.id);
+
     /*
      * -----------------------------------------
-     * RAW PRODUCT VALUES
+     * PRODUCT VALUES
      * -----------------------------------------
      */
 
-    const rawBrand = displayValue(product.brand);
+    const brand = displayValue(product.brand);
 
-    const rawItemName = cleanProductTitle(
-      product.itemName
-    );
+    const itemName =
+      cleanProductTitle(product.itemName) || "Product";
 
-    const rawColor = displayValue(product.color);
+    const color = displayValue(product.color);
 
-    const rawDescription = displayValue(
+    const description = displayValue(
       product.productDescription
     );
 
-    const rawBulletPoints = displayValue(
+    const bulletPoints = displayValue(
       product.bulletPoints
     );
-
-    /*
-     * -----------------------------------------
-     * TRANSLATE PRODUCT CONTENT
-     * -----------------------------------------
-     *
-     * We send all text together so we're not
-     * making a separate request for every field.
-     */
-
-    const [
-      brand,
-      itemName,
-      color,
-      description,
-      bulletPoints,
-    ] = await translateToEnglish([
-      rawBrand,
-      rawItemName,
-      rawColor,
-      rawDescription,
-      rawBulletPoints,
-    ]);
 
     /*
      * -----------------------------------------
@@ -175,170 +68,248 @@ export default async function ProductPage({ params }) {
      */
 
     return (
-      <main
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-          padding: "2rem",
-        }}
-      >
-        {/* =====================================
-            PRODUCT TITLE
-        ===================================== */}
+      <main className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
 
-        <h1
-          style={{
-            fontSize: "2rem",
-            lineHeight: "1.3",
-            marginBottom: "2rem",
-          }}
-        >
-          {itemName || "Product"}
-        </h1>
+          {/* =====================================
+              PRODUCT
+          ===================================== */}
 
-        {/* =====================================
-            IMAGE GALLERY
-        ===================================== */}
+          <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
+            <div className="grid lg:grid-cols-2">
 
-        <ProductImageGallery
-          images={product.images}
-          itemName={itemName || "Product"}
-          itemId={product.itemId}
-        />
+              {/* =================================
+                  IMAGE GALLERY
+              ================================= */}
 
-        {/* =====================================
-            DESCRIPTION
-        ===================================== */}
+              <div className="border-b border-gray-200 bg-gray-50 p-6 lg:border-b-0 lg:border-r lg:p-10">
+                <ProductImageGallery
+                  images={product.images}
+                  itemName={itemName}
+                  itemId={product.itemId}
+                />
+              </div>
 
-        {description && (
-          <section
-            style={{
-              marginTop: "2rem",
-              paddingTop: "1.5rem",
-              borderTop: "1px solid #ddd",
-            }}
-          >
-            <h2>Description</h2>
+              {/* =================================
+                  PRODUCT INFORMATION
+              ================================= */}
 
-            <p
-              style={{
-                lineHeight: "1.7",
-                color: "#444",
-                whiteSpace: "pre-line",
-              }}
-            >
-              {description}
-            </p>
+              <div className="flex flex-col p-6 sm:p-10">
+
+                {/* Brand */}
+                {brand && (
+                  <p className="text-sm font-semibold uppercase tracking-widest text-gray-500">
+                    {brand}
+                  </p>
+                )}
+
+                {/* Product Name */}
+                <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+                  {itemName}
+                </h1>
+
+                {/* Price */}
+                <div className="mt-6">
+                  <span className="text-3xl font-bold text-green-600">
+                    Free
+                  </span>
+
+                  <span className="ml-2 text-sm text-gray-400">
+                    $0.00
+                  </span>
+                </div>
+
+                {/* Short Details */}
+                <div className="mt-8 space-y-3 border-y border-gray-200 py-6">
+
+                  {color && (
+                    <div className="flex justify-between gap-4 text-sm">
+                      <span className="font-medium text-gray-500">
+                        Color
+                      </span>
+
+                      <span className="text-right text-gray-900">
+                        {color}
+                      </span>
+                    </div>
+                  )}
+
+                  {product.productType && (
+                    <div className="flex justify-between gap-4 text-sm">
+                      <span className="font-medium text-gray-500">
+                        Product Type
+                      </span>
+
+                      <span className="text-right text-gray-900">
+                        {product.productType}
+                      </span>
+                    </div>
+                  )}
+
+                  {product.country && (
+                    <div className="flex justify-between gap-4 text-sm">
+                      <span className="font-medium text-gray-500">
+                        Country
+                      </span>
+
+                      <span className="text-right text-gray-900">
+                        {product.country}
+                      </span>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Add To Cart */}
+                <div className="mt-8 rounded-2xl bg-gray-50 p-5">
+                  <p className="mb-4 text-sm text-gray-500">
+                    This item is completely free.
+                  </p>
+
+                  <CartButton
+                    productId={product.id}
+                    initialQuantity={initialQuantity}
+                  />
+                </div>
+
+                {/* Free Store Message */}
+                <div className="mt-6 flex gap-3 rounded-xl bg-green-50 p-4">
+                  <div className="text-lg">
+                    ✓
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">
+                      Free item
+                    </p>
+
+                    <p className="mt-1 text-sm text-green-700">
+                      There is no charge for this product.
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+            </div>
           </section>
-        )}
 
-        {/* =====================================
-            PRICE
-        ===================================== */}
+          {/* =====================================
+              DESCRIPTION
+          ===================================== */}
 
-        <section
-          style={{
-            marginTop: "2rem",
-            padding: "1.5rem",
-            background: "#f7f7f7",
-            borderRadius: "10px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "1.8rem",
-              fontWeight: "bold",
-              color: "#008000",
-            }}
-          >
-            Free
-          </div>
+          {description && (
+            <section className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Description
+              </h2>
 
-          <div
-            style={{
-              marginTop: "0.25rem",
-              color: "#666",
-            }}
-          >
-            $0.00
-          </div>
-        </section>
-
-        {/* =====================================
-            PRODUCT DETAILS
-        ===================================== */}
-
-        <section
-          style={{
-            marginTop: "2rem",
-          }}
-        >
-          <h2>Product Details</h2>
-
-          {brand && (
-            <p>
-              <strong>Company:</strong>{" "}
-              {brand}
-            </p>
+              <p className="mt-4 max-w-4xl whitespace-pre-line leading-7 text-gray-600">
+                {description}
+              </p>
+            </section>
           )}
 
-          {color && (
-            <p>
-              <strong>Color:</strong>{" "}
-              {color}
-            </p>
+          {/* =====================================
+              FEATURES
+          ===================================== */}
+
+          {bulletPoints && (
+            <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Features
+              </h2>
+
+              <div className="mt-4 whitespace-pre-line leading-7 text-gray-600">
+                {bulletPoints}
+              </div>
+            </section>
           )}
 
-          {product.productType && (
-            <p>
-              <strong>Product Type:</strong>{" "}
-              {product.productType}
-            </p>
-          )}
+          {/* =====================================
+              PRODUCT DETAILS
+          ===================================== */}
 
-          <p>
-            <strong>Item ID:</strong>{" "}
-            {product.itemId}
-          </p>
+          <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Product Details
+            </h2>
 
-          {product.marketplace && (
-            <p>
-              <strong>Marketplace:</strong>{" "}
-              {product.marketplace}
-            </p>
-          )}
+            <div className="mt-6 divide-y divide-gray-100">
 
-          {product.country && (
-            <p>
-              <strong>Country:</strong>{" "}
-              {product.country}
-            </p>
-          )}
-        </section>
+              {brand && (
+                <div className="flex justify-between gap-6 py-4">
+                  <span className="font-medium text-gray-500">
+                    Company
+                  </span>
 
-        {/* =====================================
-            FEATURES
-        ===================================== */}
+                  <span className="text-right text-gray-900">
+                    {brand}
+                  </span>
+                </div>
+              )}
 
-        {bulletPoints && (
-          <section
-            style={{
-              marginTop: "2rem",
-            }}
-          >
-            <h2>Features</h2>
+              {color && (
+                <div className="flex justify-between gap-6 py-4">
+                  <span className="font-medium text-gray-500">
+                    Color
+                  </span>
 
-            <p
-              style={{
-                lineHeight: "1.7",
-                color: "#444",
-                whiteSpace: "pre-line",
-              }}
-            >
-              {bulletPoints}
-            </p>
+                  <span className="text-right text-gray-900">
+                    {color}
+                  </span>
+                </div>
+              )}
+
+              {product.productType && (
+                <div className="flex justify-between gap-6 py-4">
+                  <span className="font-medium text-gray-500">
+                    Product Type
+                  </span>
+
+                  <span className="text-right text-gray-900">
+                    {product.productType}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between gap-6 py-4">
+                <span className="font-medium text-gray-500">
+                  Item ID
+                </span>
+
+                <span className="break-all text-right text-gray-900">
+                  {product.itemId}
+                </span>
+              </div>
+
+              {product.marketplace && (
+                <div className="flex justify-between gap-6 py-4">
+                  <span className="font-medium text-gray-500">
+                    Marketplace
+                  </span>
+
+                  <span className="text-right text-gray-900">
+                    {product.marketplace}
+                  </span>
+                </div>
+              )}
+
+              {product.country && (
+                <div className="flex justify-between gap-6 py-4">
+                  <span className="font-medium text-gray-500">
+                    Country
+                  </span>
+
+                  <span className="text-right text-gray-900">
+                    {product.country}
+                  </span>
+                </div>
+              )}
+
+            </div>
           </section>
-        )}
+
+        </div>
       </main>
     );
   } finally {

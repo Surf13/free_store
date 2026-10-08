@@ -1,110 +1,139 @@
-// src/components/ItemList.tsx
+"use client";
 
 import Link from "next/link";
-import { ProductList } from "@/components/ProductList";
+import { useState } from "react";
 
-export async function ItemList({
-  productType,
+type Product = {
+  id: string;
+  itemId?: string;
+  itemName?: string | unknown[];
+  productType?: string;
+  images?: {
+    image?: {
+      id?: string;
+    };
+  }[];
+};
+
+export function ItemList({
+  products,
 }: {
-  productType: string;
+  products: Product[];
 }) {
-  const products = await ProductList({ productType });
+  return (
+    <div className="grid grid-cols-1 gap-6 px-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {products.map((item) => (
+        <ProductCard key={item.id} item={item} />
+      ))}
+    </div>
+  );
+}
+
+function ProductCard({ item }: { item: Product }) {
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const itemName = Array.isArray(item.itemName)
+  ? String(
+      (item.itemName[0] as { value?: unknown })?.value ??
+        item.itemId ??
+        "Unnamed Product"
+    )
+  : String(item.itemName ?? item.itemId ?? "Unnamed Product");
+  
+  const mainImage = item.images?.[0]?.image;
+
+  const imageUrl = mainImage?.id
+    ? `/api/images/${mainImage.id}`
+    : null;
+
+  async function handleAddToCart() {
+    if (adding) return;
+
+    setAdding(true);
+
+    try {
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: item.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add product to cart");
+      }
+
+      setAdded(true);
+
+      setTimeout(() => {
+        setAdded(false);
+      }, 1500);
+    } catch (error) {
+      console.error("Add to cart error:", error);
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        overflowX: "auto",
-        gap: "1rem",
-        padding: "1rem",
-        margin: "0 1rem",
-      }}
-    >
-      {products.map((item: any) => {
-        const itemName = Array.isArray(item.itemName)
-          ? String(item.itemName[0]?.value ?? item.itemId)
-          : item.itemId;
+    <article className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+      {/* Product Link */}
+      <Link
+        href={`/product/${item.id}`}
+        className="block"
+      >
+        {/* Image */}
+        <div className="flex h-64 items-center justify-center overflow-hidden bg-gray-50 p-6">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={itemName}
+              className="h-full w-full object-contain transition duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center rounded-xl bg-gray-100 text-sm text-gray-400">
+              No image available
+            </div>
+          )}
+        </div>
 
-        const mainImage = item.images?.[0]?.image;
+        {/* Product Information */}
+        <div className="px-5 pt-5">
+          <h3 className="line-clamp-2 text-lg font-semibold text-gray-900">
+            {itemName}
+          </h3>
 
-        const imageUrl = mainImage?.id
-          ? `/api/images/${mainImage.id}`
-          : null;
+          {item.productType && (
+            <p className="mt-1 text-sm text-gray-500">
+              {item.productType}
+            </p>
+          )}
+        </div>
+      </Link>
 
-        console.log("Product:", item.id);
-        console.log("Main image:", mainImage);
-        console.log("Image URL:", imageUrl);
-
-        return (
-          <div
-            key={item.id}
-            style={{
-              flex: "0 0 auto",
-              border: "1px solid #ccc",
-              padding: "1rem",
-              width: "200px",
-              textAlign: "center",
-              borderRadius: "8px",
-            }}
-          >
-            <Link
-              href={`/product/${item.id}`}
-              style={{
-                textDecoration: "none",
-                color: "inherit",
-              }}
-            >
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={itemName}
-                  width={170}
-                  height={150}
-                  style={{
-                    width: "85%",
-                    height: "150px",
-                    objectFit: "contain",
-                    borderRadius: "4px",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "85%",
-                    height: "150px",
-                    margin: "0 auto",
-                    background: "#eee",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#666",
-                    borderRadius: "4px",
-                  }}
-                >
-                  No image
-                </div>
-              )}
-
-              <h3
-                style={{
-                  margin: "0.5rem 0 0.25rem",
-                }}
-              >
-                {itemName}
-              </h3>
-
-              <p
-                style={{
-                  color: "gray",
-                  margin: 0,
-                }}
-              >
-                {item.productType}
-              </p>
-            </Link>
-          </div>
-        );
-      })}
-    </div>
+      {/* Add to Cart */}
+      <div className="p-5 pt-4">
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={adding}
+          className={`w-full rounded-xl px-4 py-3 text-sm font-semibold transition ${
+            added
+              ? "bg-green-600 text-white"
+              : "bg-black text-white hover:bg-gray-800"
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          {adding
+            ? "Adding..."
+            : added
+              ? "Added ✓"
+              : "Add to Cart"}
+        </button>
+      </div>
+    </article>
   );
 }

@@ -3,6 +3,10 @@
 import { sendEmail} from "@/app/api/sendEmail";
 import {useState} from 'react';
 
+/*
+Inactive Page. Previously used to allow users to send emails via webstie to "Corporate".
+Does not work due to domain being inactive which emails were routed through.
+*/
 export default function Page(){
     const [status, setStatus] = useState(null);
 

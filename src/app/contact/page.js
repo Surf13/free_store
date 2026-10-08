@@ -1,13 +1,10 @@
 import Link from 'next/link';
 
-
-async function getData(){ //From Database eventually....
-    const res = await fetch("http://snowtooth-api-rest.fly.dev");
-    return res.json();
-}
-
+/*
+This is used to Show an About Page for Webstore. 
+Mainly Text
+*/
 export default async function Page() {
-  const item = await getData();
 
   return (
     <main>

@@ -2,6 +2,15 @@
 
 import { useState } from 'react';
 
+/*
+UNUSED Product Entry Page
+
+This was added to allow for products to be manually added to database
+in early development.
+
+Current database project uses products already stored in database and displays them through
+the ItemList function found in ProductList/ItemList
+*/
 export default function ProductFormPage() {
   const [form, setForm] = useState({
     name: '',
